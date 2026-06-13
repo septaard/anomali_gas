@@ -21,15 +21,66 @@ class DashboardController extends Controller
     /**
      * Display the dashboard with current stock and transaction history.
      */
-    public function index()
+    public function index(Request $request)
     {
         $stok = StokAkturl::current();
-        // Include the user who made the transaction
-        $riwayat = RiwayatTransaksi::with('user')->orderBy('tanggal', 'desc')
-            ->orderBy('id', 'desc')
-            ->paginate(15);
+        
+        $query = RiwayatTransaksi::with('user');
+
+        if ($request->filled('start_date') && $request->filled('end_date')) {
+            $query->whereBetween('tanggal', [$request->start_date . ' 00:00:00', $request->end_date . ' 23:59:59']);
+        }
+
+        $riwayat = $query->orderBy('tanggal', 'desc')->orderBy('id', 'desc')->paginate(15);
 
         return view('dashboard', compact('stok', 'riwayat'));
+    }
+
+    /**
+     * Export transaction history to CSV based on date filter.
+     */
+    public function exportCsv(Request $request)
+    {
+        $query = RiwayatTransaksi::with('user')->orderBy('tanggal', 'desc');
+
+        if ($request->filled('start_date') && $request->filled('end_date')) {
+            $query->whereBetween('tanggal', [$request->start_date . ' 00:00:00', $request->end_date . ' 23:59:59']);
+        }
+
+        $riwayat = $query->get();
+
+        $filename = "transaksi_anomali_gas_" . date('Y-m-d_H-i-s') . ".csv";
+
+        $headers = [
+            "Content-type"        => "text/csv",
+            "Content-Disposition" => "attachment; filename=$filename",
+            "Pragma"              => "no-cache",
+            "Cache-Control"       => "must-revalidate, post-check=0, pre-check=0",
+            "Expires"             => "0"
+        ];
+
+        $columns = ['Tanggal', 'Admin', 'Tipe Transaksi', 'Jumlah Tabung', 'Pemasukan', 'Pengeluaran', 'Catatan'];
+
+        $callback = function() use($riwayat, $columns) {
+            $file = fopen('php://output', 'w');
+            fputcsv($file, $columns);
+
+            foreach ($riwayat as $item) {
+                $row['Tanggal']  = $item->tanggal->format('Y-m-d H:i:s');
+                $row['Admin']    = $item->user ? $item->user->name : 'Sistem';
+                $row['Tipe Transaksi']  = $item->keterangan;
+                $row['Jumlah Tabung']  = $item->jumlah_tabung;
+                $row['Pemasukan']  = $item->pemasukan;
+                $row['Pengeluaran']  = $item->pengeluaran;
+                $row['Catatan']  = $item->catatan ?? '';
+
+                fputcsv($file, array($row['Tanggal'], $row['Admin'], $row['Tipe Transaksi'], $row['Jumlah Tabung'], $row['Pemasukan'], $row['Pengeluaran'], $row['Catatan']));
+            }
+
+            fclose($file);
+        };
+
+        return response()->stream($callback, 200, $headers);
     }
 
     /**
@@ -88,6 +139,21 @@ class DashboardController extends Controller
             return redirect()->route('dashboard')->with('success', $message ?? 'Berhasil');
         } catch (InvalidArgumentException $e) {
             return redirect()->route('dashboard')->with('error', $e->getMessage());
+        }
+    /**
+     * Delete a transaction (Developer only).
+     */
+    public function destroy($id)
+    {
+        if (!auth()->user()->isDeveloper()) {
+            abort(403, 'Unauthorized action.');
+        }
+
+        try {
+            $this->transaksiService->destroy($id);
+            return redirect()->route('dashboard')->with('success', 'Data transaksi berhasil dihapus dan direvert.');
+        } catch (\Exception $e) {
+            return redirect()->route('dashboard')->with('error', 'Gagal menghapus data: ' . $e->getMessage());
         }
     }
 }

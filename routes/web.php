@@ -18,6 +18,8 @@ Route::middleware('auth')->group(function () {
     // Dashboard Routes
     Route::get('/', [DashboardController::class, 'index'])->name('dashboard');
     Route::post('/transaksi', [DashboardController::class, 'store'])->name('transaksi.store');
+    Route::delete('/transaksi/{id}', [DashboardController::class, 'destroy'])->name('transaksi.destroy');
+    Route::get('/export-csv', [DashboardController::class, 'exportCsv'])->name('transaksi.export');
 
     // Settings Routes
     Route::get('/settings', [\App\Http\Controllers\SettingsController::class, 'index'])->name('settings.index');

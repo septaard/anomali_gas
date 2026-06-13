@@ -159,13 +159,25 @@
 
         .card { background: rgba(26, 34, 54, 0.5); backdrop-filter: blur(12px); border: 1px solid var(--border-subtle); border-radius: var(--radius-lg); overflow: hidden; }
 
+        .sidebar { transition: transform 0.3s cubic-bezier(0.4, 0, 0.2, 1); }
+        .main-wrapper { transition: margin-left 0.3s cubic-bezier(0.4, 0, 0.2, 1); }
+        
+        /* Toggle state for desktop */
+        body.sidebar-collapsed .sidebar { transform: translateX(-100%); }
+        body.sidebar-collapsed .main-wrapper { margin-left: 0; }
+
         @keyframes fadeInUp { from { opacity: 0; transform: translateY(16px); } to { opacity: 1; transform: translateY(0); } }
         .animate-in { animation: fadeInUp 0.5s cubic-bezier(0.4, 0, 0.2, 1) both; }
         
         @media (max-width: 1024px) {
             .sidebar { transform: translateX(-100%); transition: 0.3s; }
             .main-wrapper { margin-left: 0; }
+            /* Toggle state for mobile */
+            body.sidebar-expanded .sidebar { transform: translateX(0); }
         }
+        
+        .toggle-btn { background: none; border: none; color: var(--text-primary); cursor: pointer; display: flex; align-items: center; justify-content: center; padding: 8px; margin-right: 12px; border-radius: var(--radius-sm); transition: 0.2s; }
+        .toggle-btn:hover { background: rgba(148, 163, 184, 0.15); }
     </style>
     @yield('styles')
 </head>
@@ -202,7 +214,16 @@
     {{-- MAIN WRAPPER --}}
     <main class="main-wrapper">
         <div class="topbar">
-            <h1 class="page-title">@yield('header_title')</h1>
+            <div style="display: flex; align-items: center;">
+                <button id="sidebar-toggle" class="toggle-btn" aria-label="Toggle Sidebar">
+                    <svg xmlns="http://www.w3.org/2000/svg" width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+                        <line x1="3" y1="12" x2="21" y2="12"></line>
+                        <line x1="3" y1="6" x2="21" y2="6"></line>
+                        <line x1="3" y1="18" x2="21" y2="18"></line>
+                    </svg>
+                </button>
+                <h1 class="page-title">@yield('header_title')</h1>
+            </div>
             <div class="header-time" id="header-time"></div>
         </div>
         <div class="content-area">
@@ -225,6 +246,26 @@
     </main>
 
     <script>
+        // Sidebar Toggle Logic
+        const toggleBtn = document.getElementById('sidebar-toggle');
+        toggleBtn.addEventListener('click', () => {
+            if (window.innerWidth > 1024) {
+                document.body.classList.toggle('sidebar-collapsed');
+            } else {
+                document.body.classList.toggle('sidebar-expanded');
+            }
+        });
+
+        // Close sidebar on mobile when clicking outside
+        document.querySelector('.main-wrapper').addEventListener('click', (e) => {
+            if (window.innerWidth <= 1024 && document.body.classList.contains('sidebar-expanded')) {
+                // Ignore clicks on the toggle button itself
+                if (!e.target.closest('#sidebar-toggle')) {
+                    document.body.classList.remove('sidebar-expanded');
+                }
+            }
+        });
+
         function updateClock() {
             const now = new Date();
             const options = { weekday: 'long', day: 'numeric', month: 'long', year: 'numeric', hour: '2-digit', minute: '2-digit', second: '2-digit', hour12: false };

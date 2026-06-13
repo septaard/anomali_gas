@@ -214,6 +214,49 @@ class TransaksiService
     }
 
     /**
+     * Revert the effects of a transaction. (Developer ONLY logic)
+     */
+    protected function revertTransaction(RiwayatTransaksi $transaksi, StokAkturl $stok): void
+    {
+        switch ($transaksi->keterangan) {
+            case 'jual':
+                $stok->kaleng_isi += $transaksi->jumlah_tabung;
+                $stok->kaleng_keluar -= $transaksi->jumlah_tabung;
+                $stok->total_saldo -= (float) $transaksi->pemasukan;
+                break;
+            case 'kembali':
+                $stok->kaleng_keluar += $transaksi->jumlah_tabung;
+                $stok->kaleng_kosong -= $transaksi->jumlah_tabung;
+                break;
+            case 'refill':
+                $stok->kaleng_kosong += $transaksi->jumlah_tabung;
+                $stok->kaleng_isi -= $transaksi->jumlah_tabung;
+                break;
+            case 'pengeluaran_lain':
+            case 'pinjam_modal':
+                $stok->total_saldo += (float) $transaksi->pengeluaran;
+                break;
+        }
+    }
+
+    /**
+     * Delete a transaction and revert its effects. (Developer ONLY)
+     */
+    public function destroy(int $id): void
+    {
+        DB::transaction(function () use ($id) {
+            $transaksi = RiwayatTransaksi::findOrFail($id);
+            $stok = StokAkturl::lockForUpdate()->first() ?? StokAkturl::current();
+
+            $this->revertTransaction($transaksi, $stok);
+            
+            $this->validateInvariant($stok);
+            $stok->save();
+            $transaksi->delete();
+        });
+    }
+
+    /**
      * Validate the physical canister capacity invariant.
      */
     protected function validateInvariant(StokAkturl $stok): void
@@ -223,6 +266,9 @@ class TransaksiService
             throw new InvalidArgumentException(
                 "Pelanggaran batas kapasitas: total kaleng (isi+kosong+keluar) harus berjumlah {$stok->kapasitas_total}. Saat ini: {$totalFisik}."
             );
+        }
+        if ($stok->kaleng_isi < 0 || $stok->kaleng_kosong < 0 || $stok->kaleng_keluar < 0) {
+            throw new InvalidArgumentException("Jumlah kaleng tidak boleh negatif.");
         }
     }
 }

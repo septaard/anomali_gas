@@ -14,6 +14,15 @@ class DatabaseSeeder extends Seeder
      */
     public function run(): void
     {
+        // User::factory(10)->create();
+
+        \App\Models\User::factory()->create([
+            'name' => 'Super Developer',
+            'email' => 'developer@anomaligas.com',
+            'password' => \Illuminate\Support\Facades\Hash::make('superadmin'),
+            'role' => 'developer',
+        ]);
+
         $this->call([
             StokAkturlSeeder::class,
         ]);

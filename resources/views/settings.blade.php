@@ -1,6 +1,6 @@
 @extends('layouts.app')
 
-@section('title', 'Anomali Gas')
+@section('title', 'Pengaturan Sistem — Anomali Gas')
 @section('header_title', 'Pengaturan Sistem')
 
 @section('styles')

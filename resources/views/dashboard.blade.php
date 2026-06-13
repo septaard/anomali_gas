@@ -1,6 +1,6 @@
 @extends('layouts.app')
 
-@section('title', 'Anomali Gas')
+@section('title', 'Dashboard — Anomali Gas')
 @section('header_title', 'Monitoring Stok')
 
 @section('styles')
@@ -139,9 +139,24 @@
 
     {{-- TRANSACTION HISTORY --}}
     <div class="card animate-in">
-        <div class="panel-header">
+        <div class="panel-header" style="flex-wrap: wrap; gap: 16px;">
             <h2 class="panel-title"><span>📋</span> Riwayat Aktivitas</h2>
-            <div class="panel-actions">
+            
+            <div class="panel-actions" style="display: flex; align-items: center; flex-wrap: wrap; gap: 10px;">
+                <form action="{{ route('dashboard') }}" method="GET" style="display: flex; align-items: center; gap: 10px; background: rgba(30, 41, 59, 0.5); padding: 5px 10px; border-radius: var(--radius-sm); border: 1px solid var(--border-subtle);">
+                    <input type="date" name="start_date" class="form-input" style="padding: 6px 10px; width: auto; font-size: 13px;" value="{{ request('start_date') }}" required>
+                    <span style="color: var(--text-muted); font-size: 13px;">-</span>
+                    <input type="date" name="end_date" class="form-input" style="padding: 6px 10px; width: auto; font-size: 13px;" value="{{ request('end_date') }}" required>
+                    <button type="submit" class="btn btn--ghost btn--sm" style="padding: 6px 12px;">Filter</button>
+                    @if(request('start_date'))
+                        <a href="{{ route('dashboard') }}" class="btn btn--ghost btn--sm" style="padding: 6px 12px; color: var(--accent-rose);">Reset</a>
+                    @endif
+                </form>
+
+                <a href="{{ route('transaksi.export', ['start_date' => request('start_date'), 'end_date' => request('end_date')]) }}" class="btn btn--ghost btn--sm" style="border-color: var(--accent-emerald); color: var(--accent-emerald);">
+                    📥 Export CSV
+                </a>
+
                 <button class="btn btn--primary btn--sm" onclick="openModal()">＋ Transaksi Baru</button>
             </div>
         </div>
@@ -159,6 +174,9 @@
                             <th>Pemasukan</th>
                             <th>Pengeluaran</th>
                             <th>Catatan</th>
+                            @if(auth()->user()->isDeveloper())
+                                <th>Aksi</th>
+                            @endif
                         </tr>
                     </thead>
                     <tbody>
@@ -169,7 +187,7 @@
                                 <td>{{ $item->user ? $item->user->name : 'Sistem' }}</td>
                                 <td>
                                     @if($item->keterangan === 'jual') <span class="badge badge--jual">↗ Sewa / Jual</span>
-                                    @elseif($item->keterangan === 'kembali') <span class="badge badge--kembali"> Kembali</span>
+                                    @elseif($item->keterangan === 'kembali') <span class="badge badge--kembali">↺ Kembali</span>
                                     @elseif($item->keterangan === 'refill') <span class="badge badge--refill">↙ Refill </span>
                                     @elseif($item->keterangan === 'pengeluaran_lain') <span class="badge badge--pengeluaran"> Pengeluaran </span>
                                     @elseif($item->keterangan === 'pinjam_modal') <span class="badge badge--pinjam"> Kasbon </span>
@@ -179,6 +197,15 @@
                                 <td class="text-income tabular-nums">{{ (float) $item->pemasukan > 0 ? '+Rp ' . number_format((float) $item->pemasukan, 0, ',', '.') : '—' }}</td>
                                 <td class="text-expense tabular-nums">{{ (float) $item->pengeluaran > 0 ? '-Rp ' . number_format((float) $item->pengeluaran, 0, ',', '.') : '—' }}</td>
                                 <td>{{ $item->catatan ?: '-' }}</td>
+                                @if(auth()->user()->isDeveloper())
+                                <td>
+                                    <form action="{{ route('transaksi.destroy', $item->id) }}" method="POST" onsubmit="return confirm('Yakin ingin menghapus data ini? (Stok & Saldo akan dikembalikan secara otomatis)');" style="display:inline-block;">
+                                        @csrf
+                                        @method('DELETE')
+                                        <button type="submit" class="btn btn--ghost btn--sm" style="color: var(--accent-rose); border-color: var(--accent-rose); padding: 4px 8px; font-size: 11px;">Hapus</button>
+                                    </form>
+                                </td>
+                                @endif
                             </tr>
                         @endforeach
                     </tbody>
