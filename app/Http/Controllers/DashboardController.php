@@ -140,6 +140,8 @@ class DashboardController extends Controller
         } catch (InvalidArgumentException $e) {
             return redirect()->route('dashboard')->with('error', $e->getMessage());
         }
+    }
+
     /**
      * Delete a transaction (Developer only).
      */
