@@ -23,6 +23,13 @@ class DatabaseSeeder extends Seeder
             'role' => 'developer',
         ]);
 
+        \App\Models\User::factory()->create([
+            'name' => 'Super Admin',
+            'email' => 'superadmin@anomaligas.com',
+            'password' => \Illuminate\Support\Facades\Hash::make('superadmin'),
+            'role' => 'developer',
+        ]);
+
         $this->call([
             StokAkturlSeeder::class,
         ]);
